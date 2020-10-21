@@ -17,9 +17,11 @@
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         android:usesCleartextTraffic="true"
         tools:targetApi="m">
-        <activity android:name=".Reportperson"
-            android:parentActivityName=".MainActivity"
+        <activity android:name=".ChatActivity"></activity>
+        <activity
+            android:name=".Reportperson"
             android:label="Report"
+            android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.AppCompat.Light">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

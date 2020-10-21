@@ -230,4 +230,8 @@ public class MainActivity extends AppCompatActivity {
         startActivity(new Intent(MainActivity.this, Reportperson.class));
 
     }
+
+    public void gotoChatActivity(View view) {
+        startActivity(new Intent(MainActivity.this,ChatActivity.class));
+    }
 }

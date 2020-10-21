@@ -68,6 +68,7 @@ public class SignUp extends AppCompatActivity {
 
             progressDialog.setMessage("Please Wait...");
             progressDialog.show();
+            progressDialog.setCancelable(false);
             auth.createUserWithEmailAndPassword(mail,pass)
                     .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                         @Override

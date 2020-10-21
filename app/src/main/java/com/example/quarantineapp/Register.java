@@ -117,7 +117,7 @@ public class Register extends AppCompatActivity {
             finish();
         }
 
-        Toast.makeText(Register.this, gotpass+""+gotmail, Toast.LENGTH_SHORT).show();
+       // Toast.makeText(Register.this, gotpass+""+gotmail, Toast.LENGTH_SHORT).show();
 
 
     }
