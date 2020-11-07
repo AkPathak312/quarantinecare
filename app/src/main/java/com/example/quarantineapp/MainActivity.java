@@ -6,6 +6,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -16,10 +18,13 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,6 +39,14 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.database.core.Repo;
+import com.karumi.dexter.Dexter;
+import com.karumi.dexter.MultiplePermissionsReport;
+import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
+import com.karumi.dexter.listener.PermissionGrantedResponse;
+import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
+import com.karumi.dexter.listener.single.PermissionListener;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,7 +54,7 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private  static final int LOCATION_CODE=1;
+    private static final int LOCATION_CODE = 1;
     Window window;
     private TextView txtLocation;
     //private ProgressDialog progressDialog;
@@ -49,22 +62,22 @@ public class MainActivity extends AppCompatActivity {
     List<Address> addresses;
     ProgressDialog progressDialog;
     DatabaseReference databaseReference;
-    TextView txtname,txtlastuploaded;
+    TextView txtname, txtlastuploaded;
     String[] data;
-    String uid= FirebaseAuth.getInstance().getCurrentUser().getUid();
+    String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //Checking for location permission
-        txtLocation=findViewById(R.id.txtlocation);
+        txtLocation = findViewById(R.id.txtlocation);
         geocoder = new Geocoder(this, Locale.getDefault());
 
-        databaseReference=FirebaseDatabase.getInstance().getReference("users/"+uid);
-        txtlastuploaded=findViewById(R.id.textView3);
-        txtname=findViewById(R.id.textView2);
-        progressDialog=new ProgressDialog(this);
+        databaseReference = FirebaseDatabase.getInstance().getReference("users/" + uid);
+        txtlastuploaded = findViewById(R.id.textView3);
+        txtname = findViewById(R.id.textView2);
+        progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
         progressDialog.setMessage("Getting details...");
         progressDialog.show();
@@ -72,22 +85,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                int i=(int)dataSnapshot.getChildrenCount();
-                data=new String[i];
-                Log.i("UID",uid);
-                int j=0;
-                for(DataSnapshot ds:dataSnapshot.getChildren()){
-                    Log.i("RESULT",ds.getValue().toString());
-                    data[j]=ds.getValue().toString();
+                int i = (int) dataSnapshot.getChildrenCount();
+                data = new String[i];
+                Log.i("UID", uid);
+                int j = 0;
+                for (DataSnapshot ds : dataSnapshot.getChildren()) {
+                    Log.i("RESULT", ds.getValue().toString());
+                    data[j] = ds.getValue().toString();
                     j++;
                 }
-                Log.i("TAG",data[3]);
+                Log.i("TAG", data[3]);
                 progressDialog.cancel();
                 txtname.setText(data[6]);
-                if(data[3].equals("NA")){
+                GlobalVariables.USER_EMAIL=uid;
+                if (data[3].equals("NA")) {
                     txtlastuploaded.setText("No Picture Uploaded Yet !");
-                }else
-                    txtlastuploaded.setText("Last Pic Uploaded:"+data[3]);
+                } else
+                    txtlastuploaded.setText("Last Pic Uploaded:" + data[3]);
             }
 
             @Override
@@ -96,21 +110,18 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        if(Build.VERSION.SDK_INT>=21){
-            window=this.getWindow();
+        if (Build.VERSION.SDK_INT >= 21) {
+            window = this.getWindow();
             window.setStatusBarColor(this.getResources().getColor(R.color.colorPrimaryDark));
             // window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
-        if(ContextCompat.checkSelfPermission(
+        if (ContextCompat.checkSelfPermission(
                 getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION
-        )!= PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(MainActivity.this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},LOCATION_CODE);
-        }else{
+        ) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_CODE);
+        } else {
             getLocation();
         }
-
-
-
 
 
     }
@@ -118,48 +129,62 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode==LOCATION_CODE&&grantResults.length>0){
-            if(grantResults[0]==PackageManager.PERMISSION_GRANTED){
+        if (requestCode == LOCATION_CODE && grantResults.length > 0) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getLocation();
-            }else{
+            } else {
                 Toast.makeText(MainActivity.this, "Permission Denied", Toast.LENGTH_SHORT).show();
             }
         }
 
     }
 
-    private  void getLocation(){
-        LocationRequest locationRequest=new LocationRequest();
+    private void getLocation() {
+        final LocationRequest locationRequest = new LocationRequest();
         locationRequest.setInterval(1000);
         locationRequest.setFastestInterval(3000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-        LocationServices.getFusedLocationProviderClient(MainActivity.this).requestLocationUpdates(locationRequest,new LocationCallback(){
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                super.onLocationResult(locationResult);
+        Dexter.withContext(this)
+                .withPermissions(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
+                .withListener(new MultiplePermissionsListener() {
+                    @SuppressLint("MissingPermission")
+                    @Override
+                    public void onPermissionsChecked(MultiplePermissionsReport multiplePermissionsReport) {
+                        LocationServices.getFusedLocationProviderClient(MainActivity.this).requestLocationUpdates(locationRequest, new LocationCallback() {
+                            @Override
+                            public void onLocationResult(LocationResult locationResult) {
+                                super.onLocationResult(locationResult);
 
-                LocationServices.getFusedLocationProviderClient(MainActivity.this)
-                        .removeLocationUpdates(this);
-                if(locationResult!=null && locationResult.getLocations().size()>0){
-                    int latestlocationindex=locationResult.getLocations().size()-1;
-                    double lattitude= locationResult.getLocations().get(latestlocationindex).getLatitude();
-                    double longitude=locationResult.getLocations().get(latestlocationindex).getLongitude();
-                    try {
-                        addresses=geocoder.getFromLocation(lattitude,longitude,1);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                                LocationServices.getFusedLocationProviderClient(MainActivity.this)
+                                        .removeLocationUpdates(this);
+                                if (locationResult != null && locationResult.getLocations().size() > 0) {
+                                    int latestlocationindex = locationResult.getLocations().size() - 1;
+                                    double lattitude = locationResult.getLocations().get(latestlocationindex).getLatitude();
+                                    double longitude = locationResult.getLocations().get(latestlocationindex).getLongitude();
+                                    try {
+                                        addresses = geocoder.getFromLocation(lattitude, longitude, 1);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    String address = addresses.get(0).getAddressLine(0);
+                                    String area = addresses.get(0).getLocality();
+                                    String city = addresses.get(0).getAdminArea();
+                                    String postal = addresses.get(0).getPostalCode();
+                                    txtLocation.setText("Co-ordinates : (" + lattitude + "," + longitude + ") \n\n" + address + ", " + area + ", " + city + ", -" + postal);
+                                    GlobalVariables.USER_LOCATION=address + ", " + area + ", " + city + ", -" + postal;
+                                }
+                            }
+                        }, Looper.getMainLooper());
                     }
-                    String address=addresses.get(0).getAddressLine(0);
-                        String area=addresses.get(0).getLocality();
-                        String city=addresses.get(0).getAdminArea();
-                        String postal=addresses.get(0).getPostalCode();
-                    txtLocation.setText("Co-ordinates : ("+lattitude+","+longitude+") \n\n"+address+", "+area+", "+city+", -"+postal);
+
+                    @Override
+                    public void onPermissionRationaleShouldBeShown(List<PermissionRequest> list, PermissionToken permissionToken) {
+
+                    }
+                }).check();
 
 
-                }
-            }
-        }, Looper.getMainLooper());
 
     }
 
@@ -211,10 +236,44 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void gotomyreports(View view) {
-        Intent i=new Intent(MainActivity.this,DummyReports.class);
-        startActivity(i);
+        select();
 
+    }
 
+    private void select() {
+        LayoutInflater layoutInflater=LayoutInflater.from(this);
+        View alertview=layoutInflater.inflate(R.layout.alert_custom,null);
+        TextView cameralaert=alertview.findViewById(R.id.fromcameraalert);
+        TextView galleryalert=alertview.findViewById(R.id.fromgalleryalert);
+        Button cancelalert=alertview.findViewById(R.id.cancelalert);
+        final AlertDialog.Builder alertDialog=new AlertDialog.Builder(this);
+        alertDialog.setView(alertview);
+        final AlertDialog alertDialog1=alertDialog.create();
+        alertDialog1.show();
+        cameralaert.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog1.dismiss();
+                Intent i=new Intent(MainActivity.this,UploadReports.class);
+                startActivity(i);
+
+            }
+        });
+        galleryalert.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog1.dismiss();
+                Intent i=new Intent(MainActivity.this,DummyReports.class);
+                startActivity(i);
+            }
+        });
+
+        cancelalert.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog1.dismiss();
+            }
+        });
     }
 
     public void gotoservices(View view) {

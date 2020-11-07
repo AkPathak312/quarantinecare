@@ -43,10 +43,18 @@
 
         android:id="@+id/btnfinish"
         android:layout_width="200dp"
-        android:layout_margin="40dp"
+        android:layout_margin="20sp"
         android:onClick="finishuploading"
         android:layout_height="wrap_content"
         android:text="Finish Uploading"
         android:background="#fff" />
+        <Button
+            android:id="@+id/btnmyuploads"
+            android:layout_width="200dp"
+            android:layout_margin="20sp"
+            android:onClick="gotomyuploads"
+            android:layout_height="wrap_content"
+            android:text="My uploads"
+            android:background="@drawable/round_border" />
     </LinearLayout>
 </ScrollView>
